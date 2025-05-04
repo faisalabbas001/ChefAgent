@@ -6,9 +6,9 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "7860:7860"
    
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
     # Enable hot reload for development
-    command: uv run chainlit run chatbot.py --host 0.0.0.0 --port 8000 -w 
+    command: uv run chainlit run chatbot.py --host 0.0.0.0 --port 7860 -w 
