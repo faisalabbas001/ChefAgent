@@ -1,10 +1,14 @@
-version: '0.0.13'
+version: '3.8'
 
 services:
-  chefagent:
-    build: .
+  chatbot:
+    build: 
+      context: .
+      dockerfile: Dockerfile
     ports:
-      - "7860:7860"
-    volumes:
-      - .:/app
-    restart: unless-stopped
+      - "8000:8000"
+   
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    # Enable hot reload for development
+    command: uv run chainlit run chatbot.py --host 0.0.0.0 --port 8000 -w 

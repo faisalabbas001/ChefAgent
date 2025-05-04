@@ -8,7 +8,7 @@ load_dotenv()
 
 
 provider=AsyncOpenAI(
-      api_key="AIzaSyAACrjsLiagv9HncN-WvuZV0F169bp1eq8",
+      api_key="GEMINI_API_KEY",
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
 
 )
