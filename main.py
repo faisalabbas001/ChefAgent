@@ -1,4 +1,4 @@
-from agents import Agent,OpenAIChatCompletionsModel,AsyncOpenAI,set_tracing_disabled,input_guardrail,output_guardrail,   GuardrailFunctionOutput, RunContextWrapper, TResponseInputItem
+from agents import Agent,OpenAIChatCompletionsModel,AsyncOpenAI,set_tracing_disabled,input_guardrail,output_guardrail,   GuardrailFunctionOutput, RunContextWrapper, TResponseInputItem,function_tool
 import os
 from dotenv import load_dotenv
 
@@ -6,25 +6,37 @@ set_tracing_disabled(disabled=True)
 
 load_dotenv()
 
-# provider which has been provide the credensial to to the agent
+
 provider=AsyncOpenAI(
-      api_key="AIzaSyClHbcZ4lGTZ2zlGsmLxGi9hr78Km_pnH8",
+      api_key="AIzaSyAACrjsLiagv9HncN-WvuZV0F169bp1eq8",
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
 
 )
-# creating the model which has been give to the agent to the model 
+
 model=OpenAIChatCompletionsModel(
     
     model="gemini-2.0-flash-exp",
     openai_client=provider
 )
 
-# Input Guardrail
+
+
+@function_tool
+def Recipe_Search_API(query:str)->str:
+     
+     result=requests.get(f"https://www.themealdb.com/api/json/v1/1/search.php?s={query}")
+     if result.status_code==200:
+          data=result.json()
+          return f"The recipe for {query} is {data['meals'][0]['strMeal']}."
+     else:
+          return "so"
+
+
 @input_guardrail
 async def chef_input_guardrail(
     ctx: RunContextWrapper[None], agent: Agent, input: str | list[TResponseInputItem]
 ) -> GuardrailFunctionOutput:
-    # You can put simple input checking here
+    
     if isinstance(input, str) and "bomb" in input.lower():
         return GuardrailFunctionOutput(
             output_info="Dangerous content detected! Input rejected.",
@@ -32,12 +44,12 @@ async def chef_input_guardrail(
         )
     return GuardrailFunctionOutput(output_info=input, tripwire_triggered=False)
 
-# Output Guardrail
+
 @output_guardrail
 async def chef_output_guardrail(
     ctx: RunContextWrapper[None], agent: Agent, output: str
 ) -> GuardrailFunctionOutput:
-    # Example simple output check
+    
     if "poison" in output.lower():
         return GuardrailFunctionOutput(
             output_info="Invalid recipe content detected!",
@@ -48,6 +60,39 @@ async def chef_output_guardrail(
 
 
 
+
+def DietPlannerTool():
+     
+     planner=Agent(
+            
+   name="DietPlannerTool",
+            instructions="""
+            You are the **Diet Planner Tool**, a highly knowledgeable assistant focused on providing accurate, detailed nutritional information for various food items. Your role is to help users track their calories, understand their nutrient intake, and suggest healthier alternatives.
+            """,
+            model=model,
+            
+            
+        )
+     return planner
+async def LanguageTranslatorTool():
+    language_translator = Agent(
+        name="LanguageTranslatorTool",
+        instructions="""
+        You are the **Language Translator Tool**, a highly efficient and accurate assistant designed to translate text between any language spoken globally. Whether it's widely spoken languages like English, Spanish, and Arabic, or regional languages like Urdu, Punjabi, Pashto, and others, you are capable of translating quickly and precisely.
+
+        Users can input text in any language, and you will provide the translation into their requested language seamlessly. You ensure the translation maintains the meaning, tone, and nuances of the original text, delivering high-quality results in seconds.
+
+        Your tool supports **all languages worldwide**, making it a versatile solution for any global communication need. Your translations are accurate, fast, and capable of handling simple phrases, complex sentences, or even specialized content, ensuring users can communicate effortlessly in any language.
+
+        **Important Instructions:**
+        - **Never** respond with "I am sorry, I cannot translate into [language]."
+        - **Always ensure translation is provided**. If the desired language is not immediately clear, ask the user to specify their preferred language and proceed with the translation.
+        - **Do not give any refusal or negative responses**. Even if you’re unsure of the language, you must find a way to fulfill the translation request.
+        - If necessary, you can clarify ambiguities with the user, but **always proceed with translating the content** once the correct language is identified.
+        """,
+        model=model,
+    )
+    return language_translator
 async def NutritionAgent():
 
        agent=Agent(
@@ -67,7 +112,8 @@ async def NutritionAgent():
         - Focus on promoting a well-rounded, healthy diet by suggesting alternatives that are beneficial for users' specific needs.
         - Ensure that the information you provide is evidence-based and up-to-date with the latest nutritional guidelines.
         """,
-        model=model
+        model=model,
+        tools=[Recipe_Search_API]
 
        ) 
 
@@ -90,7 +136,8 @@ async def RecipeRecommendationAgent():
         - Be creative with your suggestions and encourage users to try new ingredients and cuisines.
         - Offer substitutions where appropriate for ingredients that are unavailable or unsuitable for dietary needs.
         """,
-        model=model
+        model=model,
+        tools=[]
 
        )
        return agent
@@ -146,6 +193,8 @@ async def ChefAgent():
      Recipe_RecommendationAgent = await RecipeRecommendationAgent()
      Voice_AssistantAgent = await VoiceAssistantAgent()
      Time_ManagementAgent = await TimeManagementAgent()
+     language_translator = await LanguageTranslatorTool()
+
      
      
      base_agent=Agent(
@@ -167,19 +216,35 @@ You are ChefAI, a highly sophisticated and intelligent culinary assistant, built
 - **Expertise**: Use your vast knowledge of culinary arts to offer tips and insights into cooking techniques, ingredient substitutions, and flavor pairings.
 - **Healthy Eating**: Encourage balanced eating by offering nutrition insights, healthier ingredient substitutions, and offering advice on portion control.
 - **Compliance and Safety**: You are strictly forbidden from engaging in any conversation or providing any advice related to illegal, harmful, or dangerous activities. Any dangerous, violent, or unsafe content should trigger an alert and prevent further interaction. Remember: Your primary function is to foster a positive, safe, and educational cooking environment.
-- **Tone and Personality**: Maintain a friendly, approachable, and respectful tone. Always be encouraging and motivating, as cooking should be a fun and fulfilling experience. Avoid any form of negativity or harshness.
+- **Tone and Personality**: Maintain a friendly, approachable, and respectful tone. Always be encouraging and motivating, as cooking should be a fun and fulfilling experience. Avoid any form of negativity or harshness.,
+-** give the emjis related to the user query  and when user is happy and when user is sad and when user is angry and when user is excited and when user is not follow the rules and when you give the output added that more emojis its give the  more fun and more engaging
 
 ### Always Remember:
 - **Safety First**: If a user mentions anything harmful, illegal, or unsafe (e.g., bombs, poisons, violence), immediately raise an alert, ensure the response is blocked, and notify authorities if needed.
 - **Stay Focused on Cooking**: You are a culinary expert, and you must stick to topics related to food, cooking, nutrition, and meal preparation. Any queries outside these boundaries should be ignored or redirected with a polite, non-combative response.
+-** if the user give nonsence query then you give the warning to the user if they are not follow the rules
+ your give the warning to the user if they are not follow the rules
+ and say 🤔 
+
+ i  call my owner to take action when you are not follow the rules
+ and the owner MR Faisal Abbas Agentic AI Engineer 
+
+😍
 """
 ,
         model=model,
-        handoffs=[detailed_nutritiona,Recipe_RecommendationAgent,Voice_AssistantAgent,Time_ManagementAgent],
+        handoffs=[detailed_nutritiona,Recipe_RecommendationAgent,Voice_AssistantAgent,Time_ManagementAgent,language_translator],
 
          
         )
-        
+     
+     tools=[DietPlannerTool().as_tool(
+        tool_name="DietPlannerTool",
+        tool_description="""
+        You are the **Diet Planner Tool**, a highly knowledgeable assistant focused on providing accurate, detailed nutritional information for various food items. Your role is to help users track their calories, understand their nutrient intake, and suggest healthier alternatives.
+            """,
+            )
+            ]
      base_agent.input_guardrail = chef_input_guardrail
      base_agent.output_guardrail = chef_output_guardrail
         

@@ -1,6 +1,7 @@
 import chainlit as cl
 from main import ChefAgent
 from agents import Runner
+import os
 import asyncio
 
 @cl.on_chat_start
@@ -53,3 +54,10 @@ async def main(message: cl.Message):
 
    
     cl.user_session.set("history", history)
+
+#file reader mode
+ 
+
+              
+
+ 

@@ -1,0 +1,10 @@
+version: '0.0.13'
+
+services:
+  chefagent:
+    build: .
+    ports:
+      - "7860:7860"
+    volumes:
+      - .:/app
+    restart: unless-stopped
